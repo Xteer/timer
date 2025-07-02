@@ -1,0 +1,278 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Timer</title>
+  <style>
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+    }
+
+    body {
+      background: linear-gradient(135deg, #e0f7fa, #ffffff);
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      min-height: 100vh;
+      padding: 2rem;
+      transition: background 0.5s ease;
+    }
+
+    h1 {
+      margin-bottom: 1.5rem;
+      color: #263238;
+      font-size: 2.5rem;
+      letter-spacing: 1px;
+      text-shadow: 0 2px 4px rgba(0,0,0,0.1);
+    }
+
+    .timer-container {
+      width: 90%;
+      max-width: 400px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 1.5rem;
+      background: rgba(255, 255, 255, 0.8);
+      border-radius: 20px;
+      padding: 2rem;
+      box-shadow: 0 10px 30px rgba(0,0,0,0.1);
+      transition: transform 0.3s ease;
+    }
+
+    .timer-container:hover {
+      transform: translateY(-5px);
+    }
+
+    #timerDisplay {
+      font-size: 2.5rem;
+      font-weight: bold;
+      color: #263238;
+      margin-bottom: 1rem;
+      text-shadow: 0 1px 2px rgba(0,0,0,0.1);
+    }
+
+    .glass {
+      position: relative;
+      width: 30vw;
+      max-width: 180px;
+      min-width: 120px;
+      height: 60vw;
+      max-height: 360px;
+      min-height: 240px;
+      border: 3px solid #90a4ae;
+      border-radius: 10% / 50%;
+      overflow: hidden;
+      background: transparent;
+      box-shadow: 
+        0 0 5px rgba(0,0,0,0.2) inset,
+        0 0 10px rgba(0,0,0,0.1);
+      transition: all 0.3s ease;
+    }
+
+    .water {
+      position: absolute;
+      bottom: 0;
+      left: 0;
+      width: 100%;
+      height: 0%;
+      background: radial-gradient(circle at 50% 20%, #81d4fa, #26c6da);
+      border-radius: 10% / 50%;
+      transition: height 0.3s ease;
+    }
+
+    .bubbles {
+      position: absolute;
+      width: 100%;
+      height: 100%;
+      pointer-events: none;
+      overflow: hidden;
+      z-index: 2;
+    }
+
+    .bubble {
+      position: absolute;
+      border-radius: 50%;
+      background: rgba(255, 255, 255, 0.7);
+      opacity: 0;
+      animation: float 2s ease-in-out infinite;
+    }
+
+    @keyframes float {
+      0% {
+        transform: translate(0, 0) scale(0.8);
+        opacity: 0.3;
+      }
+      50% {
+        opacity: 1;
+      }
+      100% {
+        transform: translate(0, -100%) scale(1.2);
+        opacity: 0;
+      }
+    }
+
+    input[type="number"] {
+      width: 100%;
+      padding: 0.6rem 0.8rem;
+      font-size: 1.1rem;
+      border: 2px solid #b0bec5;
+      border-radius: 8px;
+      transition: border-color 0.3s ease;
+    }
+
+    input[type="number"]:focus {
+      border-color: #26a69a;
+      outline: none;
+    }
+
+    button {
+      padding: 0.7rem 1.5rem;
+      font-size: 1.1rem;
+      cursor: pointer;
+      border: none;
+      border-radius: 8px;
+      background: linear-gradient(45deg, #26a69a, #64b5f6);
+      color: white;
+      box-shadow: 0 4px 10px rgba(0,0,0,0.1);
+      transition: all 0.3s ease;
+    }
+
+    button:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 6px 15px rgba(0,0,0,0.2);
+    }
+
+    @media (max-width: 480px) {
+      h1 {
+        font-size: 2rem;
+      }
+      
+      #timerDisplay {
+        font-size: 2rem;
+      }
+    }
+  </style>
+</head>
+<body>
+  <h1>Timer</h1>
+  <div class="timer-container">
+    <div id="timerDisplay">00:00</div>
+    <div class="glass">
+      <div class="water" id="water"></div>
+      <div class="bubbles" id="bubbles"></div>
+    </div>
+    <input type="number" id="minutes" placeholder="Minuten eingeben" min="1"/>
+    <div style="display: flex; gap: 1.5rem;">
+      <button onclick="startTimer()">Start Timer</button>
+      <button onclick="resetTimer()">Zurücksetzen</button>
+    </div>
+  </div>
+
+  <script>
+    let timerInterval;
+    let water = document.getElementById('water');
+    let bubbles = document.getElementById('bubbles');
+    let timerDisplay = document.getElementById('timerDisplay');
+
+    function formatTime(seconds) {
+      const mins = Math.floor(seconds / 60);
+      const secs = seconds % 60;
+      return `${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
+    }
+
+    function createBubble() {
+      if (!bubbles) return;
+      
+      const bubble = document.createElement('div');
+      bubble.className = 'bubble';
+      
+      // Zufällige Positionierung
+      bubble.style.left = `${Math.random() * 80 + 10}%`;
+      bubble.style.width = `${Math.random() * 6 + 2}px`;
+      bubble.style.height = bubble.style.width;
+      
+      // Zufällige Animation-Delay
+      const delay = Math.random() * 2;
+      bubble.style.animationDelay = `${delay}s`;
+      
+      // Zufällige Dauer
+      const duration = Math.random() * 1 + 1.5;
+      bubble.style.animationDuration = `${duration}s`;
+      
+      bubbles.appendChild(bubble);
+      
+      // Bubble nach Animation entfernen
+      setTimeout(() => {
+        bubble.remove();
+      }, (duration + 0.5) * 1000);
+    }
+
+    function startTimer() {
+      const minutesInput = document.getElementById('minutes').value;
+      if (!minutesInput || isNaN(minutesInput) || minutesInput <= 0) {
+        alert("Bitte geben Sie eine gültige Anzahl an Minuten ein.");
+        return;
+      }
+
+      const totalMinutes = parseInt(minutesInput);
+      const duration = totalMinutes * 60;
+      let elapsed = 0;
+
+      // Timer-Display initialisieren
+      timerDisplay.textContent = formatTime(duration);
+      
+      // Partikelcontainer leeren
+      bubbles.innerHTML = '';
+      
+      clearInterval(timerInterval);
+
+      // Bubble-Generierung starten
+      const bubbleInterval = setInterval(() => {
+        createBubble();
+      }, 500);
+
+      timerInterval = setInterval(() => {
+        elapsed++;
+        const remaining = duration - elapsed;
+        timerDisplay.textContent = formatTime(remaining);
+
+        if (remaining <= 0) {
+          clearInterval(timerInterval);
+          clearInterval(bubbleInterval);
+          water.style.height = "100%";
+          timerDisplay.textContent = "00:00";
+          
+          // Visueller Effekt beim Ende
+          document.body.style.background = "linear-gradient(135deg, #ffccbc, #ffe0b2)";
+          document.querySelector('.timer-container').style.transform = "scale(1.05)";
+          setTimeout(() => {
+            document.querySelector('.timer-container').style.transform = "scale(1)";
+            document.body.style.background = "linear-gradient(135deg, #e0f7fa, #ffffff)";
+          }, 500);
+        } else {
+          const percentage = (elapsed / duration) * 100;
+          water.style.height = `${percentage}%`;
+        }
+      }, 1000);
+    }
+
+    function resetTimer() {
+      clearInterval(timerInterval);
+      timerDisplay.textContent = "00:00";
+      document.getElementById('minutes').value = "";
+      water.style.height = "0%";
+      bubbles.innerHTML = '';
+      
+      // Zurücksetzen visueller Effekte
+      document.querySelector('.timer-container').style.transform = "scale(1)";
+      document.body.style.background = "linear-gradient(135deg, #e0f7fa, #ffffff)";
+    }
+  </script>
+</body>
+</html>
