@@ -73,6 +73,7 @@
         0 0 5px rgba(0,0,0,0.2) inset,
         0 0 10px rgba(0,0,0,0.1);
       transition: all 0.3s ease;
+      will-change: transform, box-shadow;
     }
 
     .water {
@@ -117,6 +118,26 @@
       }
     }
 
+    @keyframes pulse {
+      0%, 100% { 
+        transform: scale(1);
+        box-shadow: 0 0 10px #ff5722, 0 0 20px #ff5722;
+      }
+      50% { 
+        transform: scale(1.05);
+        box-shadow: 0 0 20px #ff5722, 0 0 30px #ff5722;
+      }
+    }
+
+    @keyframes shake {
+      0% { transform: translateX(0); }
+      20% { transform: translateX(-5px); }
+      40% { transform: translateX(5px); }
+      60% { transform: translateX(-5px); }
+      80% { transform: translateX(5px); }
+      100% { transform: translateX(0); }
+    }
+
     input[type="number"] {
       width: 100%;
       padding: 0.6rem 0.8rem;
@@ -157,13 +178,32 @@
         font-size: 2rem;
       }
     }
+
+    /* Visueller Effekt für Timerende */
+    .flash {
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100vw;
+      height: 100vh;
+      background: radial-gradient(circle, rgba(255,87,34,0.8) 0%, rgba(255,87,34,0) 60%);
+      opacity: 0;
+      pointer-events: none;
+      z-index: 9999;
+      transition: opacity 0.2s ease;
+    }
+
+    /* Animation für das Glas beim Timerende */
+    .pulse-animation {
+      animation: pulse 1s infinite, shake 0.5s infinite;
+    }
   </style>
 </head>
 <body>
   <h1>Timer</h1>
   <div class="timer-container">
     <div id="timerDisplay">00:00</div>
-    <div class="glass">
+    <div class="glass" id="glass">
       <div class="water" id="water"></div>
       <div class="bubbles" id="bubbles"></div>
     </div>
@@ -174,11 +214,33 @@
     </div>
   </div>
 
+  <!-- Visueller Effekt -->
+  <div class="flash" id="flash"></div>
+
+  <!-- Audio für Timerende -->
+  <audio id="alarmSound">
+    <source src="https://assets.codepen.io/322164/alarm-clock.mp3 " type="audio/mp3">
+    Ihr Browser unterstützt keine Audio-Elemente.
+  </audio>
+
   <script>
     let timerInterval;
     let water = document.getElementById('water');
     let bubbles = document.getElementById('bubbles');
     let timerDisplay = document.getElementById('timerDisplay');
+    let glass = document.getElementById('glass');
+    let flash = document.getElementById('flash');
+    let alarmSound = document.getElementById('alarmSound');
+
+    // Audio-Context entsperren
+    function unlockAudio() {
+      if (alarmSound.paused && alarmSound.duration > 0) {
+        alarmSound.play().catch(() => {});
+      }
+      document.body.removeEventListener('click', unlockAudio);
+    }
+    
+    document.body.addEventListener('click', unlockAudio);
 
     function formatTime(seconds) {
       const mins = Math.floor(seconds / 60);
@@ -192,25 +254,38 @@
       const bubble = document.createElement('div');
       bubble.className = 'bubble';
       
-      // Zufällige Positionierung
       bubble.style.left = `${Math.random() * 80 + 10}%`;
       bubble.style.width = `${Math.random() * 6 + 2}px`;
       bubble.style.height = bubble.style.width;
       
-      // Zufällige Animation-Delay
       const delay = Math.random() * 2;
       bubble.style.animationDelay = `${delay}s`;
       
-      // Zufällige Dauer
       const duration = Math.random() * 1 + 1.5;
       bubble.style.animationDuration = `${duration}s`;
       
       bubbles.appendChild(bubble);
       
-      // Bubble nach Animation entfernen
       setTimeout(() => {
         bubble.remove();
       }, (duration + 0.5) * 1000);
+    }
+
+    function triggerAlertEffects() {
+      // Lichtblitz
+      flash.style.opacity = 1;
+      
+      // Glasanimation starten
+      glass.classList.add('pulse-animation');
+      
+      // Alarmton abspielen
+      try {
+        alarmSound.currentTime = 0;
+        alarmSound.play();
+      } catch (e) {
+        // Fallback bei abgelehnter Wiedergabe
+        console.log("Tonwiedergabe blockiert");
+      }
     }
 
     function startTimer() {
@@ -224,23 +299,22 @@
       const duration = totalMinutes * 60;
       let elapsed = 0;
 
-      // Timer-Display initialisieren
+      // Reset aller Zustände
       timerDisplay.textContent = formatTime(duration);
-      
-      // Partikelcontainer leeren
       bubbles.innerHTML = '';
-      
+      glass.classList.remove('pulse-animation');
+      flash.style.opacity = 0;
       clearInterval(timerInterval);
 
-      // Bubble-Generierung starten
+      // Bubble-Generierung
       const bubbleInterval = setInterval(() => {
         createBubble();
       }, 500);
 
+      // Timer-Intervall starten
       timerInterval = setInterval(() => {
         elapsed++;
         const remaining = duration - elapsed;
-        timerDisplay.textContent = formatTime(remaining);
 
         if (remaining <= 0) {
           clearInterval(timerInterval);
@@ -248,30 +322,33 @@
           water.style.height = "100%";
           timerDisplay.textContent = "00:00";
           
-          // Visueller Effekt beim Ende
-          document.body.style.background = "linear-gradient(135deg, #ffccbc, #ffe0b2)";
-          document.querySelector('.timer-container').style.transform = "scale(1.05)";
-          setTimeout(() => {
-            document.querySelector('.timer-container').style.transform = "scale(1)";
-            document.body.style.background = "linear-gradient(135deg, #e0f7fa, #ffffff)";
-          }, 500);
+          // Visuelle & akustische Hinweise
+          triggerAlertEffects();
         } else {
           const percentage = (elapsed / duration) * 100;
           water.style.height = `${percentage}%`;
+          timerDisplay.textContent = formatTime(remaining);
         }
       }, 1000);
     }
 
     function resetTimer() {
+      // Timer-Logik zurücksetzen
       clearInterval(timerInterval);
       timerDisplay.textContent = "00:00";
       document.getElementById('minutes').value = "";
       water.style.height = "0%";
       bubbles.innerHTML = '';
+      glass.classList.remove('pulse-animation');
+      flash.style.opacity = 0;
       
-      // Zurücksetzen visueller Effekte
-      document.querySelector('.timer-container').style.transform = "scale(1)";
-      document.body.style.background = "linear-gradient(135deg, #e0f7fa, #ffffff)";
+      // Alarm stoppen
+      try {
+        alarmSound.pause();
+        alarmSound.currentTime = 0;
+      } catch (e) {
+        console.error("Fehler beim Zurücksetzen des Alarms", e);
+      }
     }
   </script>
 </body>
